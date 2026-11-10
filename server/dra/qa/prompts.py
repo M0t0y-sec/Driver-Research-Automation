@@ -17,8 +17,12 @@ Output STRICT JSON of the form:
 }
 
 Rules:
-- "pass" only if every cited evidence is at least E1 and the finding
-  has a non-empty lineage and limitations list.
+- The deterministic rules have already run. You may confirm "pass" or be
+  stricter; you can never upgrade a deterministic veto (a veto never
+  reaches you).
+- "pass" only if the finding has a concrete trigger condition / location,
+  and its evidence is dynamic (E2+) or E1 anchored to a real address.
+  Import-table names are not evidence of a vulnerability.
 - "retry" if a single piece of evidence is missing or a rule failed.
 - "reject" if the finding claims exploit without root cause analysis.
 - "inconclusive" if you genuinely cannot tell.
@@ -29,7 +33,9 @@ Target: {target_id}
 Finding: {finding_id}
 Title: {title}
 Summary: {summary}
+Trigger condition: {trigger_condition}
 Evidence IDs: {evidence_ids}
+Evidence (id:strength:type): {evidence_strengths}
 Lineage IDs: {lineage_ids}
 QA rule hits:
 {rules}

@@ -3,12 +3,34 @@
 Each rule is a small function that inspects an object and returns a
 `QARuleHit`. Rules are intentionally cheap and deterministic; the LLM
 review is layered on top of the rule results (see `auditor.py`).
+
+The finding gate (:func:`evaluate_finding_gate`) is the part that matters
+for evidence integrity. It runs *before* the LLM and cannot be overridden
+by it:
+
+* a finding needs at least one dynamic (E2+) evidence, or an E1 evidence
+  anchored to a real location;
+* findings without a usable location / trigger condition top out at
+  ``inconclusive``;
+* import-table-only support tops out at ``inconclusive``.
+
+A failed gate rule is a *veto*: the auditor returns ``inconclusive``
+without spending an LLM call.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Mapping
 
+from ..evidence.strength import (
+    effective_evidence_strength,
+    evidence_is_import_only,
+    is_import_location,
+    is_placeholder_location,
+    is_real_location,
+    strength_rank,
+)
+from ..models.common import EvidenceStrength
 from ..models.evidence import Evidence
 from ..models.finding import Finding, FindingStatus
 from ..models.qa import QARuleHit
@@ -97,6 +119,158 @@ def rule_evidence_strength_matches_type(e: Evidence) -> QARuleHit:
         "Evidence used in a finding should be E1 or above.",
         e.evidence_strength.value not in {"E0"},
         detail=f"strength={e.evidence_strength.value}",
+    )
+
+
+# --- Deterministic finding gate (vetoes pass; LLM cannot override) ---
+
+@dataclass(frozen=True)
+class FindingGateResult:
+    rule_hits: list[QARuleHit]
+
+    @property
+    def blocked(self) -> bool:
+        return any(not h.passed for h in self.rule_hits)
+
+    @property
+    def reasons(self) -> list[str]:
+        return [
+            f"deterministic veto: {h.rule_id} ({h.detail})"
+            for h in self.rule_hits
+            if not h.passed
+        ]
+
+
+def _evidence_location(
+    ev: Evidence, locations: Mapping[str, str | None] | None
+) -> str | None:
+    if locations:
+        loc = locations.get(ev.id)
+        if loc:
+            return loc
+    return getattr(ev, "location", None)
+
+
+def rule_finding_supporting_strength(
+    f: Finding,
+    evidences: list[Evidence],
+    evidence_locations: Mapping[str, str | None] | None = None,
+) -> QARuleHit:
+    """At least one E2+ evidence, or an E1 with a real location.
+
+    Effective strength is re-derived from facts, so caller-claimed grades
+    cannot outrank what the evidence actually shows. Import-only material
+    is capped at E1 by the derivation helper.
+    """
+    rid = "finding.supporting_strength"
+    effective: dict[str, str] = {}
+    qualifying: list[str] = []
+    for ev in evidences:
+        loc = _evidence_location(ev, evidence_locations)
+        eff = effective_evidence_strength(ev, loc)
+        effective[ev.id] = eff.value
+        if strength_rank(eff) >= strength_rank(EvidenceStrength.E2):
+            qualifying.append(ev.id)
+        elif eff == EvidenceStrength.E1 and is_real_location(loc):
+            qualifying.append(ev.id)
+
+    if not evidences:
+        return _hit(
+            rid,
+            "Finding must cite at least one verifiable evidence object.",
+            False,
+            detail="no evidence objects supplied to QA",
+        )
+    return _hit(
+        rid,
+        "Finding needs one E2+ (dynamic) evidence, or one E1 evidence with a real location.",
+        bool(qualifying),
+        detail=f"effective={effective} qualifying={qualifying}",
+    )
+
+
+def rule_finding_location_known(
+    f: Finding, supplied_location: str | None = None
+) -> QARuleHit:
+    """Location / trigger_condition must not be empty or a placeholder."""
+    rid = "finding.location_known"
+    declared = [
+        value
+        for value in (getattr(f, "location", None), f.trigger_condition)
+        if value is not None and str(value).strip()
+    ]
+    if any(is_placeholder_location(value) for value in declared):
+        return _hit(
+            rid,
+            "Finding location / trigger_condition must not be unknown/null.",
+            False,
+            detail=f"declared={declared}",
+        )
+    effective = declared[0] if declared else supplied_location
+    if not effective or is_placeholder_location(effective):
+        return _hit(
+            rid,
+            "Finding must record a location / trigger_condition.",
+            False,
+            detail=f"location={effective!r} supplied={supplied_location!r}",
+        )
+    if is_import_location(effective):
+        return _hit(
+            rid,
+            "Finding location must identify code, not an import-table name.",
+            False,
+            detail=f"location={effective!r}",
+        )
+    return _hit(
+        rid,
+        "Finding records a usable location / trigger_condition.",
+        True,
+        detail=f"location={effective!r}",
+    )
+
+
+def rule_finding_not_import_only(
+    f: Finding,
+    evidences: list[Evidence],
+    evidence_locations: Mapping[str, str | None] | None = None,
+) -> QARuleHit:
+    """A finding supported only by import names tops out at inconclusive."""
+    rid = "finding.not_import_only"
+    if not evidences:
+        return _hit(
+            rid,
+            "Finding must not rest solely on import-table evidence.",
+            False,
+            detail="no evidence objects supplied to QA",
+        )
+    flags = {
+        ev.id: evidence_is_import_only(ev, _evidence_location(ev, evidence_locations))
+        for ev in evidences
+    }
+    passed = any(not flag for flag in flags.values())
+    return _hit(
+        rid,
+        "Finding must not rest solely on import-table evidence.",
+        passed,
+        detail=f"import_only={flags}",
+    )
+
+
+def evaluate_finding_gate(
+    finding: Finding,
+    evidences: list[Evidence] | None = None,
+    *,
+    finding_location: str | None = None,
+    evidence_locations: Mapping[str, str | None] | None = None,
+) -> FindingGateResult:
+    """Run every deterministic veto rule for a finding."""
+    evs = list(evidences or [])
+    return FindingGateResult(
+        rule_hits=[
+            rule_finding_location_known(finding, finding_location),
+            rule_finding_supporting_strength(finding, evs, evidence_locations),
+            rule_finding_not_import_only(finding, evs, evidence_locations),
+        ]
     )
 
 
