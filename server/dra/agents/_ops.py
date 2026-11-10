@@ -57,9 +57,9 @@ def build_ops(
     tools: ToolGateway | None = None,
     authz: AuthzService | None = None,
 ) -> AgentOps:
-    from ..llm.mock import MockLLMClient
+    from ..llm.factory import build_llm_router
 
-    llm = llm or LLMRouter(MockLLMClient())
+    llm = llm or build_llm_router()
     tools = tools or ToolGateway()
     authz = authz or AuthzService()
     from ..config import SETTINGS

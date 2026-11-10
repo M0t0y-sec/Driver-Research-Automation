@@ -41,6 +41,7 @@ class LLMResponse:
     temperature: float = 0.0
     usage: dict = field(default_factory=dict)
     raw: Any = None
+    latency_ms: float = 0.0
 
 
 class LLMClient(Protocol):
