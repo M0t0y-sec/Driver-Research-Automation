@@ -42,7 +42,20 @@ from ..storage.filesystem import ApprovalStore as _ApprovalStore
 _default_registry = ToolRegistry()
 
 
+def _ensure_builtin_tools() -> None:
+    """Import the built-in tool package so its ``@tool`` registrations run.
+
+    Registration is an import side effect. Any caller that imports this
+    module directly (agents, CLI, scripts, tests) never touches
+    ``dra.tools.tools``, so without this the registry stays empty and every
+    call fails with "unknown tool" — which agents used to swallow silently,
+    turning a broken pipeline into a plausible-looking empty result.
+    """
+    from . import tools as _builtin_tools  # noqa: F401
+
+
 def get_default_registry() -> ToolRegistry:
+    _ensure_builtin_tools()
     return _default_registry
 
 
@@ -97,7 +110,7 @@ class ToolGateway:
         audit: AuditService | None = None,
         artefact_store: FileSystemArtifactStore | None = None,
     ) -> None:
-        self.registry = registry or _default_registry
+        self.registry = registry or get_default_registry()
         self.policy = policy or PolicyEngine()
         self.audit = audit or AuditService(AuditLog(SETTINGS.audit_log_path))
         self.tool_runs = tool_runs or ToolRunStore(SETTINGS.tool_runs_dir)

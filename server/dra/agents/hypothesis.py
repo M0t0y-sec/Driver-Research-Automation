@@ -36,9 +36,16 @@ async def hypothesis_node(state: ResearchState, ops: AgentOps) -> dict:
                 }
             )
 
+    # The location and description are the whole point: an observation saying
+    # "ioctl_code / IOCTL 0x00010000" is actionable, whereas passing only the
+    # category reduces every hypothesis to "something is wrong somewhere".
     user_prompt = (
         "Observations:\n"
-        + "\n".join(f"- id: {o.id} category: {o.category}" for o in observations)
+        + "\n".join(
+            f"- id: {o.id} | category: {o.category} | location: {o.location or 'unknown'}"
+            f" | confidence: {o.confidence} | {o.description}"
+            for o in observations
+        )
         + "\n\nAttack surface:\n"
         + "\n".join(f"- name: {x['name']} reachability: {x['reachability']}" for x in as_payload)
     )

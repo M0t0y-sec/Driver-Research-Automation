@@ -45,8 +45,8 @@ def _extract_hypotheses_for_recon(observations: list[dict], attack_surface: list
     """
     candidates: list[dict] = []
     interesting = {
-        "ioctl_dispatch", "memory_copy", "input_validation",
-        "privilege_check", "pointer_deref", "string",
+        "ioctl_code", "ioctl_dispatch", "device_exposure", "memory_copy",
+        "input_validation", "privilege_check", "pointer_deref", "string",
     }
     for obs in observations:
         cat = obs.get("category", "")
@@ -59,7 +59,7 @@ def _extract_hypotheses_for_recon(observations: list[dict], attack_surface: list
                 reach = max(reach, 0.7)
         candidates.append({
             "category": "memory_safety" if cat in {"memory_copy", "pointer_deref"} else (
-                "input_validation" if cat == "input_validation" else
+                "input_validation" if cat in {"input_validation", "ioctl_code"} else
                 "privilege" if cat == "privilege_check" else
                 "logic"
             ),
@@ -168,10 +168,20 @@ class MockLLMClient:
 
     @staticmethod
     def _extract_observations(prompt: str) -> list[dict]:
-        # Best-effort: pull out lines that look like "- id: OBS-..."
+        # Best-effort parse of the pipe-delimited observation lines emitted by
+        # the hypothesis agent:
+        #   - id: OBS-... | category: ioctl_code | location: IOCTL 0x... | ...
         items: list[dict] = []
-        for m in re.finditer(r"id:\s*(OBS-[A-Z0-9-]+).*?category:\s*([a-z_]+)", prompt, re.S):
-            items.append({"id": m.group(1), "category": m.group(2)})
+        for line in prompt.splitlines():
+            m = re.search(
+                r"id:\s*(OBS-[A-Z0-9-]+)\s*\|\s*category:\s*([a-z_]+)"
+                r"(?:\s*\|\s*location:\s*([^|]*))?",
+                line,
+            )
+            if not m:
+                continue
+            location = (m.group(3) or "").strip() or None
+            items.append({"id": m.group(1), "category": m.group(2), "location": location})
         return items
 
     @staticmethod
