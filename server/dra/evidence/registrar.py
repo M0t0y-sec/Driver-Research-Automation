@@ -15,6 +15,7 @@ from ..models.common import EvidenceStrength, IDPrefix, new_id
 from ..models.evidence import Evidence
 from ..storage.artifact_store import FileSystemArtifactStore
 from ..storage.filesystem import EvidenceStore
+from .strength import derive_evidence_strength, lower_strength
 
 
 class EvidenceRegistrar:
@@ -39,7 +40,10 @@ class EvidenceRegistrar:
         tool_version: str | None = None,
         model_version: str | None = None,
         confidence: str = "medium",
-        evidence_strength: EvidenceStrength = EvidenceStrength.E1,
+        evidence_strength: EvidenceStrength | None = None,
+        location: str | None = None,
+        dynamic: bool = False,
+        reproducible: bool = False,
         related_hypothesis_id: str | None = None,
         related_experiment_id: str | None = None,
         related_crash_id: str | None = None,
@@ -50,6 +54,11 @@ class EvidenceRegistrar:
 
         `source_artifact_hash` is required; if not provided, we hash
         `source_bytes` (or the JSON of the summary if neither is set).
+
+        `evidence_strength` is only a *ceiling*: the stored grade is
+        derived from facts (`evidence_type`, producer, location, dynamic /
+        reproducible signals, provenance) and clamped to the weaker value.
+        Callers cannot self-award E3 for a model guess.
         """
         if source_artifact_hash is None:
             if source_bytes is not None:
@@ -58,6 +67,18 @@ class EvidenceRegistrar:
                 source_artifact_hash = hashlib.sha256(
                     json.dumps(summary, sort_keys=True).encode("utf-8")
                 ).hexdigest()
+        derived = derive_evidence_strength(
+            evidence_type=evidence_type,
+            producer_agent=producer_agent,
+            source_artifact_hash=source_artifact_hash,
+            location=location,
+            summary=summary,
+            model_version=model_version,
+            tool_version=tool_version,
+            dynamic=dynamic,
+            reproducible=reproducible,
+        )
+        final_strength = derived if evidence_strength is None else lower_strength(evidence_strength, derived)
         ev = Evidence(
             id=new_id(IDPrefix.EVIDENCE),
             project_id=project_id,
@@ -69,7 +90,7 @@ class EvidenceRegistrar:
             tool_version=tool_version,
             model_version=model_version,
             confidence=confidence,
-            evidence_strength=evidence_strength,
+            evidence_strength=final_strength,
             related_hypothesis_id=related_hypothesis_id,
             related_experiment_id=related_experiment_id,
             related_crash_id=related_crash_id,
