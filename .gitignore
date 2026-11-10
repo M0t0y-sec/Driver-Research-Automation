@@ -82,3 +82,8 @@ $RECYCLE.BIN/
 # Local test artifacts
 tmp/
 .tmp/
+
+# Unrelated third-party installer docs dropped in the workspace
+install.md
+install.ps1
+install_ef.ps1
