@@ -21,7 +21,10 @@ class Reachability(BaseModel):
     interface_exposure: str | None = None
     namespace: str | None = None
     acl: str | None = None
-    attack_actor: AttackActor = "unprivileged_local_user"
+    # No privilege level may be assumed from the presence of an IOCTL
+    # interface alone; callers must set this from evidence or leave it
+    # unknown.
+    attack_actor: AttackActor = "unknown"
 
 
 class AttackSurfaceItem(BaseModel):
