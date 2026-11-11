@@ -42,12 +42,56 @@ class HypothesisDraft(_Contract):
     location: str | None
     description: str
     observation_ids: list[str]
+    # The falsifiable prediction is required by the hypothesis agent's own
+    # policy (a draft without one is discarded), but it stays optional in
+    # the schema so older payloads remain valid for the client.
+    falsification: str | None = None
+    source: str | None = None
+    sink: str | None = None
     score_breakdown: HypothesisScoreBreakdown
     requires_human_review: bool
 
 
 class HypothesisResponse(_Contract):
+    # An empty list is a legitimate answer: it means "no observation
+    # supports a falsifiable hypothesis". ``reasoning`` carries the why.
     hypotheses: list[HypothesisDraft]
+    reasoning: str = ""
+
+
+class ReverseSink(_Contract):
+    kind: Literal["call", "pointer_write", "other"]
+    symbol: str | None = None
+    instruction_rva: int | None = None
+    instruction: str = ""
+    length_source: Literal["user_controlled", "constant", "unknown"] = "unknown"
+    destination: Literal["stack_buffer", "user_buffer", "kernel_pool", "unknown"] = "unknown"
+    probe_for_read: Literal["present", "absent", "unknown"] = "unknown"
+    probe_for_write: Literal["present", "absent", "unknown"] = "unknown"
+    input_derived: bool | None = None
+    guard: str = ""
+    confidence: Literal["low", "medium", "high"] = "low"
+
+
+class ReverseFunction(_Contract):
+    function_rva: int | None = None
+    role: Literal["dispatch_handler", "helper", "unknown"] = "unknown"
+    summary: str = ""
+    sinks: list[ReverseSink] = Field(default_factory=list)
+
+
+class ReverseDataflow(_Contract):
+    source: str = ""
+    sink: str = ""
+    guard: Literal["none", "probe", "bounds_check", "unknown"] = "unknown"
+    instruction_rvas: list[int] = Field(default_factory=list)
+    summary: str = ""
+
+
+class ReverseResponse(_Contract):
+    functions: list[ReverseFunction]
+    dataflow: list[ReverseDataflow]
+    not_analyzed: list[str]
 
 
 class StaticSummaryResponse(_Contract):
@@ -86,11 +130,12 @@ class LabelExtractResponse(_Contract):
 
 
 # Tasks whose payload has a fixed, consumed shape. Tasks not listed here
-# (TOOL_OUTPUT_PARSE, JSON_REPAIR, CROSS_FN_REASON, EXPERIMENT_DESIGN,
-# EMBEDDING) either accept arbitrary JSON or have no call site yet; they
-# are still parsed as JSON, and one repair attempt is still made.
+# (TOOL_OUTPUT_PARSE, JSON_REPAIR, EXPERIMENT_DESIGN, EMBEDDING) either
+# accept arbitrary JSON or have no call site yet; they are still parsed
+# as JSON, and one repair attempt is still made.
 TASK_CONTRACTS: dict[LLMTask, type[BaseModel]] = {
     LLMTask.HYPOTHESIS_GEN: HypothesisResponse,
+    LLMTask.CROSS_FN_REASON: ReverseResponse,
     LLMTask.STATIC_SUMMARY: StaticSummaryResponse,
     LLMTask.QA_REVIEW: QAReviewResponse,
     LLMTask.DETECTION_GAP: DetectionGapResponse,
@@ -109,3 +154,28 @@ def json_schema_for(task: LLMTask) -> dict | None:
     """Return the JSON Schema for ``task``'s contract, if one is defined."""
     model = contract_for(task)
     return model.model_json_schema() if model is not None else None
+
+
+def hypothesis_generation_schema() -> dict:
+    """Wire schema for the hypothesis agent's ``HYPOTHESIS_GEN`` call.
+
+    Identical to :class:`HypothesisResponse` except that the model is
+    *required* to emit ``reasoning`` and a non-null ``falsification``.
+    The base contract keeps those fields optional so older payloads stay
+    valid for other callers and tests; the agent asks for them at
+    generation time because a draft without a falsifiable prediction is
+    discarded anyway.
+    """
+    import copy
+
+    schema = copy.deepcopy(HypothesisResponse.model_json_schema())
+    draft = schema.get("$defs", {}).get("HypothesisDraft", {})
+    properties = draft.setdefault("properties", {})
+    properties["falsification"] = {"title": "Falsification", "type": "string"}
+    required = draft.setdefault("required", [])
+    if "falsification" not in required:
+        required.append("falsification")
+    top_required = schema.setdefault("required", [])
+    if "reasoning" not in top_required:
+        top_required.append("reasoning")
+    return schema

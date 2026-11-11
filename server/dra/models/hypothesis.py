@@ -28,6 +28,10 @@ class Hypothesis(BaseModel):
     source: str | None = None
     sink: str | None = None
     description: str
+    # A concrete, checkable prediction that would prove this hypothesis
+    # false. The hypothesis agent discards drafts that do not carry one;
+    # "may be vulnerable" is not a falsification.
+    falsification: str | None = None
     evidence_ids: list[str] = Field(default_factory=list)
     observation_ids: list[str] = Field(default_factory=list)
     attack_surface_item_ids: list[str] = Field(default_factory=list)
