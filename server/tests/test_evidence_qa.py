@@ -3,6 +3,12 @@
 The important invariant: a mock/pass-happy LLM must not be able to turn
 thin evidence into `qa_pass`. Deterministic rules run first and veto the
 result at `inconclusive` without even calling the LLM.
+
+A second invariant, learned from a real false positive: a real IOCTL
+constant / device name / handler RVA proves the *attack surface*, not a
+defect.  A finding resting on such facts must never reach `qa_pass`; it
+needs a defect-level evidence (sink / control_flow / crash) anchored to
+a real location.
 """
 import asyncio
 import shutil
@@ -12,10 +18,13 @@ import pytest
 from dra.agents._ops import build_ops
 from dra.agents.qa_auditor import qa_auditor_node
 from dra.config import SETTINGS
+from dra.evidence.kinds import EvidenceKind, derive_evidence_kind
 from dra.evidence.registrar import EvidenceRegistrar
 from dra.evidence.strength import (
     derive_evidence_strength,
     effective_evidence_strength,
+    evidence_kind,
+    evidence_proves_defect,
     is_real_location,
 )
 from dra.llm.mock import MockLLMClient
@@ -60,6 +69,7 @@ def _evidence(
     strength: EvidenceStrength = EvidenceStrength.E1,
     summary: str = "",
     source_artifact_hash: str = "a" * 64,
+    related_crash_id: str | None = None,
 ) -> Evidence:
     return Evidence(
         id=new_id(IDPrefix.EVIDENCE),
@@ -69,16 +79,22 @@ def _evidence(
         producer_agent=producer_agent,
         source_artifact_hash=source_artifact_hash,
         evidence_strength=strength,
+        related_crash_id=related_crash_id,
         summary=summary,
     )
 
 
-def _finding(*, evidence_ids: list[str], trigger_condition: str | None) -> Finding:
+def _finding(
+    *,
+    evidence_ids: list[str],
+    trigger_condition: str | None,
+    title: str = "t",
+) -> Finding:
     return Finding(
         id=new_id(IDPrefix.FINDING),
         project_id="PRJ-1",
         target_id="TGT-1",
-        title="t",
+        title=title,
         summary="s",
         vulnerability_class="memory_safety",
         trigger_condition=trigger_condition,
@@ -153,7 +169,7 @@ def test_register_derives_strength_instead_of_trusting_caller(fresh_env):
     assert dynamic.evidence_strength == EvidenceStrength.E2
     reproduced = reg.register(
         project_id="PRJ-1",
-        evidence_type="repro_signal",
+        evidence_type="control_flow_repro_signal",
         producer_agent="validation",
         source_artifact_hash="f" * 64,
         location="rva:0x140002000",
@@ -164,7 +180,7 @@ def test_register_derives_strength_instead_of_trusting_caller(fresh_env):
 
     # A missing hash downgrades even a reproducible signal.
     no_hash = derive_evidence_strength(
-        evidence_type="repro_signal",
+        evidence_type="control_flow_repro_signal",
         producer_agent="validation",
         source_artifact_hash="",
         location="rva:0x140002000",
@@ -172,6 +188,29 @@ def test_register_derives_strength_instead_of_trusting_caller(fresh_env):
         reproducible=True,
     )
     assert no_hash == EvidenceStrength.E2
+
+
+def test_surface_evidence_is_capped_at_e2():
+    """Reproducing an attack surface never makes a finding look strong."""
+    surface_repro = derive_evidence_strength(
+        evidence_type="repro_signal",
+        producer_agent="validation",
+        source_artifact_hash="a" * 64,
+        location="rva:0x140001000",
+        dynamic=True,
+        reproducible=True,
+    )
+    assert surface_repro == EvidenceStrength.E2
+
+    defect_repro = derive_evidence_strength(
+        evidence_type="control_flow_repro_signal",
+        producer_agent="validation",
+        source_artifact_hash="a" * 64,
+        location="rva:0x140001000",
+        dynamic=True,
+        reproducible=True,
+    )
+    assert defect_repro == EvidenceStrength.E3
 
 
 def test_effective_strength_rederives_from_facts():
@@ -193,6 +232,57 @@ def test_real_location_classification():
     assert not is_real_location(None)
     assert not is_real_location("PE:imports")
     assert not is_real_location("IoCreateDevice")
+
+
+def test_evidence_kind_classification():
+    # Attack surface: real facts about an interface, not about a defect.
+    assert derive_evidence_kind(evidence_type="static_observation") is EvidenceKind.SURFACE
+    assert derive_evidence_kind(evidence_type="dynamic_observation") is EvidenceKind.SURFACE
+    assert derive_evidence_kind(evidence_type="hypothesis_rule_signal") is EvidenceKind.SURFACE
+    assert derive_evidence_kind(evidence_type="ioctl_code_comparison") is EvidenceKind.SURFACE
+    assert derive_evidence_kind(evidence_type="device_name_scan") is EvidenceKind.SURFACE
+    assert derive_evidence_kind(evidence_type="import_RtlCopyMemory") is EvidenceKind.SURFACE
+
+    # Defect-level mechanisms.
+    assert derive_evidence_kind(evidence_type="memory_copy_sink") is EvidenceKind.SINK
+    assert derive_evidence_kind(evidence_type="missing_probe") is EvidenceKind.CONTROL_FLOW
+    assert derive_evidence_kind(evidence_type="taint_path") is EvidenceKind.CONTROL_FLOW
+    assert derive_evidence_kind(evidence_type="bounds_violation") is EvidenceKind.CONTROL_FLOW
+    assert derive_evidence_kind(evidence_type="integer_overflow") is EvidenceKind.CONTROL_FLOW
+    assert derive_evidence_kind(evidence_type="crash") is EvidenceKind.CRASH
+    assert (
+        derive_evidence_kind(
+            evidence_type="static_observation", related_crash_id="CRS-1"
+        )
+        is EvidenceKind.CRASH
+    )
+
+    # Supporting facts that presuppose a defect but do not establish one.
+    assert derive_evidence_kind(evidence_type="root_cause_link") is EvidenceKind.ROOT_CAUSE
+    assert derive_evidence_kind(evidence_type="impact_confirmed") is EvidenceKind.IMPACT
+
+
+def test_only_defect_kinds_prove_a_defect():
+    surface = _evidence(
+        evidence_type="static_observation", summary="IOCTL 0x00010000 at rva:0x1010"
+    )
+    assert evidence_kind(surface) is EvidenceKind.SURFACE
+    assert not evidence_proves_defect(surface, "rva:0x1010")
+
+    # A defect kind without a real location is not verifiable either.
+    unlocated_sink = _evidence(evidence_type="memory_copy_sink", summary="copy sink")
+    assert not evidence_proves_defect(unlocated_sink, "unknown")
+
+    sink = _evidence(evidence_type="memory_copy_sink", summary="copy sink")
+    assert evidence_proves_defect(sink, "rva:0x140002000")
+
+    # A model opinion is never proof, even when typed as a sink.
+    opinion = _evidence(
+        evidence_type="memory_copy_sink",
+        producer_agent="hypothesis",
+        summary="model claims a sink",
+    )
+    assert not evidence_proves_defect(opinion, "rva:0x140002000")
 
 
 # ---------------------------------------------------------------------------
@@ -228,8 +318,9 @@ def test_unknown_location_blocks_pass_even_with_dynamic_evidence(fresh_env):
     llm = CountingMockLLM()
     auditor = QAAuditor(LLMRouter(llm))
 
+    # Defect-typed evidence, so only the location rule can veto this one.
     ev = _evidence(
-        evidence_type="dynamic_observation",
+        evidence_type="dynamic_observation_sink",
         strength=EvidenceStrength.E2,
         summary="observed IOCTL at rva:0x140002000",
     )
@@ -265,12 +356,12 @@ def test_import_only_evidence_cannot_pass_even_if_high_strength(fresh_env):
     assert any(h.rule_id == "finding.supporting_strength" and not h.passed for h in review.rule_hits)
 
 
-def test_strong_evidence_still_passes(fresh_env):
+def test_defect_evidence_still_passes(fresh_env):
     llm = CountingMockLLM()
     auditor = QAAuditor(LLMRouter(llm))
 
     ev = _evidence(
-        evidence_type="dynamic_observation",
+        evidence_type="dynamic_observation_sink",
         strength=EvidenceStrength.E2,
         summary="IOCTL 0x222004 reaches RtlCopyMemory at rva:0x140002000",
     )
@@ -288,14 +379,14 @@ def test_strong_evidence_still_passes(fresh_env):
     assert all(h.passed for h in review.rule_hits)
 
 
-def test_e1_with_real_location_also_passes(fresh_env):
+def test_e1_defect_evidence_with_real_location_also_passes(fresh_env):
     llm = CountingMockLLM()
     auditor = QAAuditor(LLMRouter(llm))
 
     ev = _evidence(
-        evidence_type="static_observation",
+        evidence_type="missing_probe",
         strength=EvidenceStrength.E1,
-        summary="dispatch table at rva:0x140003000",
+        summary="handler at rva:0x140003000 calls RtlCopyMemory without ProbeForWrite",
     )
     finding = _finding(
         evidence_ids=[ev.id],
@@ -310,6 +401,188 @@ def test_e1_with_real_location_also_passes(fresh_env):
     assert llm.calls == 1
 
 
+def test_surface_facts_with_real_addresses_cannot_pass(fresh_env):
+    """The reproduced beep.sys false positive.
+
+    A real IOCTL constant, a real device name and a real handler RVA are
+    all true - but they only establish the attack surface.  The mock LLM
+    answers "pass"; the deterministic gate must veto before the LLM is
+    consulted.
+    """
+    llm = CountingMockLLM()
+    auditor = QAAuditor(LLMRouter(llm))
+
+    ioctl_ev = _evidence(
+        evidence_type="static_observation",
+        summary=(
+            "IOCTL 0x00010000 compared in the IRP_MJ_DEVICE_CONTROL handler "
+            "(handler_rva=0x1010); decoded as device_type=0x0001 access=any "
+            "function=0x0000 method=buffered."
+        ),
+    )
+    device_ev = _evidence(
+        evidence_type="static_observation",
+        summary="Device/symlink name \\Device\\Beep recovered from a UTF-16LE literal.",
+    )
+    dispatch_ev = _evidence(
+        evidence_type="static_observation",
+        summary=(
+            "DriverEntry writes MajorFunction[IRP_MJ_DEVICE_CONTROL] "
+            "(handler_rva=0x1010, ioctl_count=1)."
+        ),
+    )
+    finding = _finding(
+        evidence_ids=[ioctl_ev.id, device_ev.id, dispatch_ev.id],
+        trigger_condition="IOCTL 0x00010000 at rva:0x1010",
+        title="Potential issue in ioctl_code at IOCTL 0x00010000",
+    )
+
+    review = auditor.review_finding(
+        finding,
+        evidences=[ioctl_ev, device_ev, dispatch_ev],
+        evidence_locations={
+            ioctl_ev.id: "rva:0x1010",
+            device_ev.id: "rva:0x1040",
+            dispatch_ev.id: "rva:0x1000",
+        },
+    )
+
+    assert review.decision.value == "inconclusive"
+    assert review.decision.value != "pass"
+    assert llm.calls == 0, "the gate must not ask the LLM to bless attack-surface facts"
+    assert any(
+        h.rule_id == "finding.defect_evidence" and not h.passed
+        for h in review.rule_hits
+    )
+    defect_hit = next(
+        h for h in review.rule_hits if h.rule_id == "finding.defect_evidence"
+    )
+    assert "surface" in (defect_hit.detail or "")
+
+
+def test_sink_evidence_with_user_controlled_length_passes(fresh_env):
+    llm = CountingMockLLM()
+    auditor = QAAuditor(LLMRouter(llm))
+
+    ev = _evidence(
+        evidence_type="memory_copy_sink",
+        strength=EvidenceStrength.E1,
+        summary=(
+            "RtlCopyMemory at rva:0x140002000 copies OutputBufferLength "
+            "(user-controlled, read from the IRP) into a 16-byte kernel buffer; "
+            "no length check precedes the call."
+        ),
+    )
+    finding = _finding(
+        evidence_ids=[ev.id],
+        trigger_condition="IOCTL 0x222004 with an oversized output buffer",
+    )
+
+    review = auditor.review_finding(
+        finding, evidences=[ev], evidence_locations={ev.id: "rva:0x140002000"}
+    )
+
+    assert review.decision.value == "pass"
+    assert llm.calls == 1
+    assert all(h.passed for h in review.rule_hits)
+
+
+def test_real_crash_stack_evidence_passes(fresh_env):
+    llm = CountingMockLLM()
+    auditor = QAAuditor(LLMRouter(llm))
+
+    ev = _evidence(
+        evidence_type="crash",
+        strength=EvidenceStrength.E4,
+        summary=(
+            "Bugcheck 0x50 (PAGE_FAULT_IN_NONPAGED_AREA) at "
+            "beep!BeepCopyIoctl+0x2a -> nt!RtlCopyMemory."
+        ),
+        related_crash_id="CRS-TEST-1",
+    )
+    finding = _finding(
+        evidence_ids=[ev.id],
+        trigger_condition="IOCTL 0x00010000 with output length 0xFFFFFFFF",
+    )
+
+    review = auditor.review_finding(
+        finding,
+        evidences=[ev],
+        evidence_locations={ev.id: "beep.sys!BeepCopyIoctl+0x2a"},
+    )
+
+    assert review.decision.value == "pass"
+    assert llm.calls == 1
+    assert all(h.passed for h in review.rule_hits)
+
+
+def test_mixed_surface_and_defect_evidence_passes(fresh_env):
+    llm = CountingMockLLM()
+    auditor = QAAuditor(LLMRouter(llm))
+
+    surface = _evidence(
+        evidence_type="static_observation",
+        summary="IOCTL 0x222004 compared in the device-control handler.",
+    )
+    sink = _evidence(
+        evidence_type="memory_copy_sink",
+        summary="RtlCopyMemory at rva:0x140002000 uses the user-controlled length.",
+    )
+    finding = _finding(
+        evidence_ids=[surface.id, sink.id],
+        trigger_condition="IOCTL 0x222004 with an oversized output buffer",
+    )
+
+    review = auditor.review_finding(
+        finding,
+        evidences=[surface, sink],
+        evidence_locations={
+            surface.id: "rva:0x1010",
+            sink.id: "rva:0x140002000",
+        },
+    )
+
+    assert review.decision.value == "pass"
+    assert llm.calls == 1
+    assert all(h.passed for h in review.rule_hits)
+
+
+def test_uncited_defect_evidence_cannot_rescue_a_finding(fresh_env):
+    llm = CountingMockLLM()
+    auditor = QAAuditor(LLMRouter(llm))
+
+    surface = _evidence(
+        evidence_type="static_observation",
+        summary="IOCTL 0x222004 compared in the device-control handler.",
+    )
+    sink = _evidence(
+        evidence_type="memory_copy_sink",
+        summary="RtlCopyMemory at rva:0x140002000 uses the user-controlled length.",
+    )
+    # The sink exists in the evidence store, but the finding does not cite
+    # it - so the finding is still supported only by attack-surface facts.
+    finding = _finding(
+        evidence_ids=[surface.id],
+        trigger_condition="IOCTL 0x222004",
+    )
+
+    review = auditor.review_finding(
+        finding,
+        evidences=[surface, sink],
+        evidence_locations={
+            surface.id: "rva:0x1010",
+            sink.id: "rva:0x140002000",
+        },
+    )
+
+    assert review.decision.value == "inconclusive"
+    assert llm.calls == 0
+    assert any(
+        h.rule_id == "finding.defect_evidence" and not h.passed
+        for h in review.rule_hits
+    )
+
+
 def test_malformed_llm_verdict_defaults_to_inconclusive(fresh_env):
     class MalformedLLM(CountingMockLLM):
         def complete(self, messages, *, task, response_schema=None, temperature=None):
@@ -321,7 +594,7 @@ def test_malformed_llm_verdict_defaults_to_inconclusive(fresh_env):
     llm = MalformedLLM()
     auditor = QAAuditor(LLMRouter(llm))
     ev = _evidence(
-        evidence_type="dynamic_observation",
+        evidence_type="dynamic_observation_sink",
         strength=EvidenceStrength.E2,
         summary="observed at rva:0x140002000",
     )
@@ -399,3 +672,68 @@ def test_inconclusive_review_lands_on_needs_human(fresh_env):
     assert finding.qa_status == "inconclusive"
     assert finding.status == FindingStatus.NEEDS_HUMAN
     assert finding.status != FindingStatus.QA_PASS
+
+
+def test_real_surface_facts_land_on_needs_human_not_qa_pass(fresh_env):
+    """End-to-end version of the reproduced false positive.
+
+    Real IOCTL constant + real handler RVA + real device name, exactly
+    what ioctl_extract produced for beep.sys.  The hypothesis becomes a
+    finding (the graph must still emit one), but QA must not bless it.
+    """
+    ops = build_ops()
+
+    obs = Observation(
+        id=new_id(IDPrefix.OBSERVATION),
+        target_id="TGT-1",
+        project_id="PRJ-1",
+        category="ioctl_code",
+        location="rva:0x1010",
+        description=(
+            "IOCTL 0x00010000 compared in the IRP_MJ_DEVICE_CONTROL handler "
+            "(handler_rva=0x1010); device name \\Device\\Beep."
+        ),
+        source="static",
+        source_tool="ioctl_extract",
+        source_method="dispatch_comparison",
+    )
+    ops.observations.add(obs)
+
+    hypothesis = Hypothesis(
+        id=new_id(IDPrefix.HYPOTHESIS),
+        project_id="PRJ-1",
+        target_id="TGT-1",
+        category="memory_safety",
+        location=None,
+        description="Potential issue in ioctl_code at IOCTL 0x00010000",
+        observation_ids=[obs.id],
+    )
+    ops.hypotheses.add(hypothesis)
+
+    ev = ops.evidence.register(
+        project_id="PRJ-1",
+        evidence_type="static_observation",
+        producer_agent="recon",
+        target_id="TGT-1",
+        source_artifact_hash="a" * 64,
+        evidence_strength=EvidenceStrength.E1,
+        summary=obs.description,
+        lineage_ids=["TGT-1", obs.id],
+    )
+
+    state = {
+        "project_id": "PRJ-1",
+        "research_id": "RES-TEST",
+        "target_id": "TGT-1",
+        "hypothesis_ids": [hypothesis.id],
+        "selected_hypothesis_ids": [hypothesis.id],
+        "evidence_ids": [ev.id],
+    }
+    result = asyncio.run(qa_auditor_node(state, ops))
+
+    finding = ops.findings.get(result["finding_ids"][0])
+    assert finding is not None
+    assert finding.status == FindingStatus.NEEDS_HUMAN
+    assert finding.status != FindingStatus.QA_PASS
+    assert finding.qa_status == "inconclusive"
+    assert any("attack surface only" in lim for lim in finding.limitations)

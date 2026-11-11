@@ -77,6 +77,7 @@ class EvidenceRegistrar:
             tool_version=tool_version,
             dynamic=dynamic,
             reproducible=reproducible,
+            related_crash_id=related_crash_id,
         )
         final_strength = derived if evidence_strength is None else lower_strength(evidence_strength, derived)
         ev = Evidence(

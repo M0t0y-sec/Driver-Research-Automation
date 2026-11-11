@@ -10,7 +10,12 @@ Ordering matters:
    without an LLM call (as before).
 2. The deterministic evidence gate runs next. A veto caps the outcome at
    ``inconclusive`` and returns *without* calling the LLM - the model can
-   never override it.
+   never override it.  The gate requires: a usable location, supporting
+   strength, non-import-only support, **and at least one defect-level
+   evidence** (sink / control_flow / crash).  Attack-surface facts with
+   real addresses - an IOCTL constant compared in a real handler, a
+   device name, an imported primitive - clear the strength check but not
+   the defect check, so they can never reach ``pass``.
 3. Only a finding that clears the gate reaches the LLM. Its verdict may
    confirm ``pass`` or be stricter; a missing / malformed verdict now
    defaults to ``inconclusive`` instead of silently passing.
