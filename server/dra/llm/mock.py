@@ -66,6 +66,13 @@ def _extract_hypotheses_for_recon(observations: list[dict], attack_surface: list
             "location": obs.get("location"),
             "description": f"Potential issue in {cat} at {obs.get('location') or 'unknown'}; see observation {obs.get('id', '?')}.",
             "observation_ids": [obs.get("id")],
+            # The hypothesis agent discards drafts without a falsifiable
+            # prediction; the deterministic mock supplies a template one.
+            "falsification": (
+                f"Craft an input that reaches {obs.get('location') or 'the observed surface'} "
+                f"and violates the assumption recorded in {obs.get('id', '?')}; if the "
+                "target behaves safely under that input, the hypothesis is false."
+            ),
             "score_breakdown": {
                 "impact": 0.6,
                 "confidence": 0.4,
@@ -85,6 +92,11 @@ def _extract_hypotheses_for_recon(observations: list[dict], attack_surface: list
             "location": first.get("location"),
             "description": f"Generic hypothesis from observation {first.get('id', '?')}; needs analyst review.",
             "observation_ids": [first.get("id")],
+            "falsification": (
+                f"Exercise the surface recorded in {first.get('id', '?')} and check "
+                "whether the suspected unsafe behaviour is observable; if not, the "
+                "hypothesis is false."
+            ),
             "score_breakdown": {
                 "impact": 0.3, "confidence": 0.3, "reachability": 0.4,
                 "testability": 0.4, "rule_score": 0.3,
@@ -114,7 +126,24 @@ class MockLLMClient:
         if task == LLMTask.HYPOTHESIS_GEN:
             obs = self._extract_observations(prompt)
             as_ = self._extract_attack_surface(prompt)
-            structured = {"hypotheses": _extract_hypotheses_for_recon(obs, as_)}
+            reverse_status = self._extract_reverse_status(prompt)
+            if reverse_status in {"ok", "no_findings"}:
+                # The reverse layer actually analysed the handler and the
+                # mock has no dataflow reasoning to add. Returning zero
+                # hypotheses is honest; the old template generator would
+                # turn "an IOCTL exists" into a fake finding.
+                structured = {
+                    "hypotheses": [],
+                    "reasoning": (
+                        "(mock) The reverse agent analysed the handler "
+                        f"(status={reverse_status}); the mock provider has no "
+                        "dataflow reasoning, so it returns zero hypotheses "
+                        "instead of fabricating one. Set DRA_LLM_PROVIDER="
+                        "anthropic for real analysis."
+                    ),
+                }
+            else:
+                structured = {"hypotheses": _extract_hypotheses_for_recon(obs, as_)}
         elif task == LLMTask.STATIC_SUMMARY:
             structured = {
                 "summary": "(mock) Reconnaissance summary generated from PE/imports/strings.",
@@ -183,6 +212,11 @@ class MockLLMClient:
             location = (m.group(3) or "").strip() or None
             items.append({"id": m.group(1), "category": m.group(2), "location": location})
         return items
+
+    @staticmethod
+    def _extract_reverse_status(prompt: str) -> str | None:
+        match = re.search(r"REVERSE ANALYSIS STATUS:\s*([a-z_]+)", prompt)
+        return match.group(1) if match else None
 
     @staticmethod
     def _extract_attack_surface(prompt: str) -> list[dict]:

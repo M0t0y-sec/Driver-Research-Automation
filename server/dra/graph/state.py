@@ -36,9 +36,19 @@ class ResearchState(TypedDict, total=False):
     # --- reverse ---
     reverse_summary_id: str | None
     reverse_summary_text: str
+    # Structured function/dataflow findings produced by the reverse agent
+    # ({"functions": [...], "dataflow": [...], "not_analyzed": [...]}).
+    reverse_findings: dict
+    reverse_analysis_status: str
+    reverse_analysis_notes: list[str]
 
     # --- hypothesis / ranking ---
     hypothesis_ids: list[str]
+    # Why the model returned the hypotheses it did (empty list included).
+    hypothesis_reasoning: str
+    # Drafts discarded by the grounding checks (unknown observation id,
+    # missing falsification criterion).
+    hypothesis_rejected: list[dict]
     selected_hypothesis_ids: list[str]
 
     # --- input generation ---
@@ -81,7 +91,12 @@ EMPTY_STATE: ResearchState = {
     "current_node": "init",
     "retry_count": 0,
     "hypothesis_ids": [],
+    "hypothesis_reasoning": "",
+    "hypothesis_rejected": [],
     "selected_hypothesis_ids": [],
+    "reverse_findings": {},
+    "reverse_analysis_status": "not_run",
+    "reverse_analysis_notes": [],
     "test_case_set_ids": [],
     "experiment_ids": [],
     "execution_ids": [],
