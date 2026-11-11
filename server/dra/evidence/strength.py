@@ -22,6 +22,9 @@ Downgrade rules (required by the QA gate design):
 * No ``source_artifact_hash`` -> one level down.
 * No usable ``location`` (empty / unknown / null) -> one level down.
 * Import-table-only material can never exceed E1.
+* Attack-surface material (see :mod:`dra.evidence.kinds`) can never
+  exceed E2.  Observing an IOCTL surface - even reproducing it - says
+  nothing about a defect, so it must not look "strong".
 """
 from __future__ import annotations
 
@@ -29,6 +32,7 @@ import re
 
 from ..models.common import EvidenceStrength
 from ..models.evidence import Evidence
+from .kinds import DEFECT_KINDS, EvidenceKind, derive_evidence_kind
 
 # Ordered from weakest to strongest; index == rank.
 _ORDER: tuple[EvidenceStrength, ...] = (
@@ -202,11 +206,17 @@ def derive_evidence_strength(
     tool_version: str | None = None,
     dynamic: bool = False,
     reproducible: bool = False,
+    related_crash_id: str | None = None,
 ) -> EvidenceStrength:
     """Derive evidence strength from facts alone.
 
     Callers do not get to choose their own grade: the registrar takes the
     weaker of this derived grade and any claimed grade.
+
+    The evidence *kind* (:func:`dra.evidence.kinds.derive_evidence_kind`)
+    is derived from the same structured facts.  Surface-level evidence is
+    capped at E2 no matter how often it reproduces: a reachable interface
+    is not a defect.
     """
     etype = (evidence_type or "").lower()
     loc = location if location is not None else extract_location(summary)
@@ -256,7 +266,47 @@ def derive_evidence_strength(
     if not has_location:
         base = downgrade_strength(base)
 
+    # Attack-surface facts top out at E2 (dynamic reachability of the
+    # interface).  They can never claim reproducibility / live signal
+    # strength, because none of those prove a defect.
+    kind = derive_evidence_kind(
+        evidence_type=evidence_type, related_crash_id=related_crash_id
+    )
+    if kind is EvidenceKind.SURFACE:
+        base = lower_strength(base, EvidenceStrength.E2)
+
     return base
+
+
+def evidence_kind(ev: Evidence) -> EvidenceKind:
+    """Kind of an evidence record, derived from its structured fields."""
+    return derive_evidence_kind(
+        evidence_type=ev.evidence_type,
+        related_crash_id=getattr(ev, "related_crash_id", None),
+    )
+
+
+def evidence_proves_defect(ev: Evidence, location: str | None = None) -> bool:
+    """True when this evidence establishes a concrete defect mechanism.
+
+    Requires all three of:
+
+    * a defect-level kind (sink / control_flow / crash);
+    * an E1+ effective strength (a model opinion is never proof);
+    * a real, address-like location for the mechanism.
+
+    Surface facts - however real their IOCTL constant, device name or
+    handler RVA - fail the kind test and can therefore never satisfy this
+    predicate.
+    """
+    if evidence_kind(ev) not in DEFECT_KINDS:
+        return False
+    loc = location if location is not None else getattr(ev, "location", None)
+    if not is_real_location(loc):
+        return False
+    return strength_rank(effective_evidence_strength(ev, loc)) >= strength_rank(
+        EvidenceStrength.E1
+    )
 
 
 def effective_evidence_strength(
@@ -266,7 +316,8 @@ def effective_evidence_strength(
 
     Re-derives the grade from the stored facts and takes the weaker of that
     and the stored value, so a hand-written record cannot smuggle an E3 past
-    the gate without a hash / location / reproducible signal.
+    the gate without a hash / location / reproducible signal.  Surface-level
+    evidence is additionally capped at E2 by the derivation helper.
     """
     loc = location if location is not None else getattr(ev, "location", None)
     derived = derive_evidence_strength(
@@ -277,5 +328,6 @@ def effective_evidence_strength(
         summary=ev.summary,
         model_version=ev.model_version,
         dynamic=any(m in (ev.evidence_type or "").lower() for m in _DYNAMIC_TYPE_MARKERS),
+        related_crash_id=getattr(ev, "related_crash_id", None),
     )
     return lower_strength(ev.evidence_strength, derived)

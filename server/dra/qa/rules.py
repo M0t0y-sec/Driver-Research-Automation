@@ -8,6 +8,9 @@ The finding gate (:func:`evaluate_finding_gate`) is the part that matters
 for evidence integrity. It runs *before* the LLM and cannot be overridden
 by it:
 
+* a finding needs at least one defect-level evidence (sink / control_flow
+  / crash) anchored to a real location - attack-surface facts (IOCTL
+  constants, device names, imported primitives) are never enough;
 * a finding needs at least one dynamic (E2+) evidence, or an E1 evidence
   anchored to a real location;
 * findings without a usable location / trigger condition top out at
@@ -25,6 +28,8 @@ from typing import Callable, Mapping
 from ..evidence.strength import (
     effective_evidence_strength,
     evidence_is_import_only,
+    evidence_kind,
+    evidence_proves_defect,
     is_import_location,
     is_placeholder_location,
     is_real_location,
@@ -229,6 +234,52 @@ def rule_finding_location_known(
     )
 
 
+def rule_finding_defect_evidence(
+    f: Finding,
+    evidences: list[Evidence],
+    evidence_locations: Mapping[str, str | None] | None = None,
+) -> QARuleHit:
+    """At least one evidence must establish a concrete defect mechanism.
+
+    Attack-surface material - an IOCTL constant, a device name, an
+    imported ``IoCreateDevice`` / ``RtlCopyMemory``, a MajorFunction
+    store - is real evidence *of the attack surface*.  It does not show
+    that any code path mishandles attacker input, so a finding resting on
+    it alone tops out at ``inconclusive`` regardless of how real its
+    addresses are.
+
+    Qualifying kinds are :data:`dra.evidence.kinds.DEFECT_KINDS`: a sink
+    call site, a control-flow / missing-check path, or a real crash
+    stack.  Each must be anchored to a real location and be E1+ after
+    re-derivation (a model opinion never qualifies).
+    """
+    rid = "finding.defect_evidence"
+    if not evidences:
+        return _hit(
+            rid,
+            "Finding needs one defect-level evidence (sink / control_flow / crash).",
+            False,
+            detail="no evidence objects supplied to QA",
+        )
+    cited = set(f.evidence_ids)
+    kinds: dict[str, str] = {}
+    qualifying: list[str] = []
+    for ev in evidences:
+        loc = _evidence_location(ev, evidence_locations)
+        kinds[ev.id] = evidence_kind(ev).value
+        # The finding must cite the defect evidence; a defect record that
+        # merely sits in the evidence store does not support this finding.
+        if ev.id in cited and evidence_proves_defect(ev, loc):
+            qualifying.append(ev.id)
+    return _hit(
+        rid,
+        "Finding needs one cited defect-level evidence (sink / control_flow / "
+        "crash) anchored to a real location; attack-surface facts are not enough.",
+        bool(qualifying),
+        detail=f"kinds={kinds} cited={sorted(cited)} qualifying={qualifying}",
+    )
+
+
 def rule_finding_not_import_only(
     f: Finding,
     evidences: list[Evidence],
@@ -268,6 +319,7 @@ def evaluate_finding_gate(
     return FindingGateResult(
         rule_hits=[
             rule_finding_location_known(finding, finding_location),
+            rule_finding_defect_evidence(finding, evs, evidence_locations),
             rule_finding_supporting_strength(finding, evs, evidence_locations),
             rule_finding_not_import_only(finding, evs, evidence_locations),
         ]

@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 from ..agents._ops import AgentOps
-from ..evidence.strength import is_placeholder_location, is_real_location
+from ..evidence.strength import (
+    evidence_proves_defect,
+    is_placeholder_location,
+    is_real_location,
+)
 from ..graph.state import ResearchState
 from ..models.common import FindingStatus, IDPrefix, QADecision, new_id
 from ..models.evidence import Evidence
@@ -69,6 +73,32 @@ async def qa_auditor_node(state: ResearchState, ops: AgentOps) -> dict:
         if finding_location and not is_placeholder_location(finding_location)
         else None
     )
+
+    # Evidence is needed *before* the finding is built: the QA gate only
+    # passes a finding that cites a defect-level evidence, so the record
+    # itself should state when that condition is unmet.
+    evidences = [ev for ev in (ops.evidence.get(eid) for eid in ev_ids if eid) if ev is not None]
+    evidence_locations = {
+        ev.id: _evidence_location(ev, observation_locations) for ev in evidences
+    }
+    cited_evidence_ids = set(ev_ids[:8])
+    defect_evidence_ids = [
+        ev.id
+        for ev in evidences
+        if ev.id in cited_evidence_ids
+        and evidence_proves_defect(ev, evidence_locations.get(ev.id))
+    ]
+    limitations = [
+        "Phase 0/1: static research only. No execution / Lab / dynamic validation.",
+        "No reverse engineering performed beyond PE import scrape.",
+        "No detection evaluation. Verdict not assessed.",
+    ]
+    if not defect_evidence_ids:
+        limitations.append(
+            "QA gate: cited evidence establishes attack surface only (no sink / "
+            "control-flow / crash evidence); this finding cannot be qa_pass."
+        )
+
     finding = Finding(
         id=new_id(IDPrefix.FINDING),
         project_id=h.project_id,
@@ -83,19 +113,10 @@ async def qa_auditor_node(state: ResearchState, ops: AgentOps) -> dict:
         trigger_condition=trigger_condition,
         evidence_ids=ev_ids[:8],
         lineage_ids=[target_id] + list(h.observation_ids) + [h.id] + ev_ids[:8],
-        limitations=[
-            "Phase 0/1: static research only. No execution / Lab / dynamic validation.",
-            "No reverse engineering performed beyond PE import scrape.",
-            "No detection evaluation. Verdict not assessed.",
-        ],
+        limitations=limitations,
         status=FindingStatus.CANDIDATE,
     )
     ops.findings.add(finding)
-
-    evidences = [ev for ev in (ops.evidence.get(eid) for eid in ev_ids if eid) if ev is not None]
-    evidence_locations = {
-        ev.id: _evidence_location(ev, observation_locations) for ev in evidences
-    }
 
     review = ops.qa.review_finding(
         finding,
