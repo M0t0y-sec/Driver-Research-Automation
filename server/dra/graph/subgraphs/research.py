@@ -9,9 +9,13 @@ Phase 0/1 path:
            -> visibility -> detection -> robustness
            -> qa_auditor -> reporter
 
-Validation, Triage, RCA, Impact, Exploitability, Telemetry, Detection
-and Robustness are stubs that simply advance the state. The real
-versions wire into Lab + telemetry in Phase 2+.
+Validation ingests recorded crash records for the run.  Triage, Root
+Cause, Impact and Exploitability parse the recorded WinDbg
+``!analyze -v`` text and write real records (see ``dra.triage``).  When
+no crashes exist they are no-ops, so the static-only path is unchanged.
+Telemetry, Visibility, Detection and Robustness are still stubs that
+advance the state; the real versions wire into Lab + telemetry in
+Phase 2+.
 """
 from __future__ import annotations
 

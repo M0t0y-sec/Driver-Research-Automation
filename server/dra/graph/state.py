@@ -61,6 +61,11 @@ class ResearchState(TypedDict, total=False):
     telemetry_batch_ids: list[str]
 
     # --- triage / rca / impact / exploit ---
+    triage_done: bool
+    #: {"crashes": n, "analyzed": n, "partial": n, "missing_analysis": n,
+    #:  "third_party": n, "unattributed": n}
+    triage_summary: dict
+    crash_analysis_notes: list[str]
     root_cause_ids: list[str]
     impact_ids: list[str]
     exploitability_ids: list[str]
@@ -102,6 +107,9 @@ EMPTY_STATE: ResearchState = {
     "execution_ids": [],
     "crash_ids": [],
     "telemetry_batch_ids": [],
+    "triage_done": False,
+    "triage_summary": {},
+    "crash_analysis_notes": [],
     "root_cause_ids": [],
     "impact_ids": [],
     "exploitability_ids": [],

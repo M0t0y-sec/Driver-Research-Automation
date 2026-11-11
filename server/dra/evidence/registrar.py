@@ -95,6 +95,7 @@ class EvidenceRegistrar:
             related_hypothesis_id=related_hypothesis_id,
             related_experiment_id=related_experiment_id,
             related_crash_id=related_crash_id,
+            location=location,
             summary=summary,
             lineage_ids=list(lineage_ids or []),
         )
