@@ -13,7 +13,8 @@ Static-analysis tools:
   * ``static_strings``        -- printable ASCII/UTF-16LE extraction
   * ``ioctl_extract``         -- capstone DriverEntry / IOCTL analysis
   * ``attack_surface_extract``-- facts -> attack surface items
-  * ``mock_lab``              -- mock VM lab operations
+  * ``poc_generate``          -- IOCTL PoC source generation (source only)
+  * ``mock_lab``              -- lab tools backed by the provider factory
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from . import analyze_pe  # noqa: F401,E402
 from . import static_strings  # noqa: F401,E402
 from . import ioctl_extract  # noqa: F401,E402
 from . import attack_surface_extract  # noqa: F401,E402
+from . import poc_generate  # noqa: F401,E402
 from . import mock_lab  # noqa: F401,E402
 
 __all__ = [
@@ -29,5 +31,6 @@ __all__ = [
     "static_strings",
     "ioctl_extract",
     "attack_surface_extract",
+    "poc_generate",
     "mock_lab",
 ]
