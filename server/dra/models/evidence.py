@@ -26,6 +26,11 @@ class Evidence(BaseModel):
     related_hypothesis_id: str | None = None
     related_experiment_id: str | None = None
     related_crash_id: str | None = None
+    #: Address-like anchor for the fact (``module!func+0x1a``,
+    #: ``rva:0x1234``).  QA re-derives strength from this field, so a
+    #: crash/root-cause record can carry its own location instead of
+    #: depending on a linked observation.
+    location: str | None = None
     qa_status: EvidenceQAStatus = "pending"
     raw_artifact_ref: str | None = None
     normalized_artifact_ref: str | None = None

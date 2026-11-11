@@ -18,13 +18,17 @@ from ..llm.router import LLMRouter
 from ..qa.auditor import QAAuditor
 from ..storage.filesystem import (
     AttackSurfaceStore,
+    CrashStore,
     EvidenceStore,
+    ExploitabilityStore,
     FindingStore,
     HypothesisStore,
+    ImpactStore,
     ObservationStore,
     ProjectStore,
     QAReviewStore,
     ResearchStore,
+    RootCauseStore,
 )
 from ..tools.gateway import ToolGateway
 
@@ -49,6 +53,10 @@ class AgentOps:
     findings: FindingStore
     evidence_store: EvidenceStore
     qa_reviews: QAReviewStore
+    crashes: CrashStore
+    root_causes: RootCauseStore
+    impacts: ImpactStore
+    exploitabilities: ExploitabilityStore
 
 
 def build_ops(
@@ -78,6 +86,10 @@ def build_ops(
         findings=FindingStore(SETTINGS.findings_dir),
         evidence_store=EvidenceStore(SETTINGS.evidence_dir),
         qa_reviews=QAReviewStore(SETTINGS.data_dir / "qa_reviews"),
+        crashes=CrashStore(SETTINGS.data_dir / "crashes"),
+        root_causes=RootCauseStore(SETTINGS.data_dir / "root_causes"),
+        impacts=ImpactStore(SETTINGS.data_dir / "impacts"),
+        exploitabilities=ExploitabilityStore(SETTINGS.data_dir / "exploitability"),
     )
 
 
