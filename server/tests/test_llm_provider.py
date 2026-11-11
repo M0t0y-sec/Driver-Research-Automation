@@ -4,7 +4,6 @@ No network here: the Anthropic client is injected with a fake transport
 that returns Message-shaped objects. The mock client's behaviour is
 covered by the existing graph tests.
 """
-from __future__ import annotations
 
 import json
 import logging

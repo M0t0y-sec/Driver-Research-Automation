@@ -16,7 +16,6 @@ What these tests protect:
 * the four graph nodes write Crash, RootCause, SecurityImpact,
   ExploitabilityAssessment and Evidence records.
 """
-from __future__ import annotations
 
 import asyncio
 import shutil

@@ -10,7 +10,6 @@ an imported memory routine) are *not* vulnerabilities, and the prompt
 says so explicitly so the model does not turn every observation into a
 template hypothesis.
 """
-from __future__ import annotations
 
 from ..llm.base import LLMMessage
 from ..models.attack_surface import AttackSurface

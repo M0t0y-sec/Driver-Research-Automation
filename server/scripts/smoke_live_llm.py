@@ -19,7 +19,6 @@ key is written to disk. Store data goes to a temporary directory.
 Exit codes: 0 = ran, 2 = missing key / target, 1 = provider or model
 output failure.
 """
-from __future__ import annotations
 
 import argparse
 import asyncio

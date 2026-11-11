@@ -5,7 +5,6 @@ single point where the untrusted wrapper is applied to anything that
 came from a sample / tool output / log / dump before it is shown to
 the LLM.
 """
-from __future__ import annotations
 
 from typing import Any
 

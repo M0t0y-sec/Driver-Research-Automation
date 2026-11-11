@@ -3,7 +3,6 @@
 A tool produces zero or more artefacts (file dumps, logs, reports).
 Each artefact is hash-addressed through the ArtifactStore.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 

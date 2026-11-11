@@ -3,7 +3,6 @@
 All read-only; the writers are the graph nodes + the tool gateway.
 Phase 2+ adds mutation endpoints gated by authorisation.
 """
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 

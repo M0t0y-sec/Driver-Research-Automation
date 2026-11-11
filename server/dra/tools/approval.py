@@ -1,5 +1,4 @@
 """Approval service: tracks human approvals for HIGH/EXTREME tool calls."""
-from __future__ import annotations
 
 from typing import Iterable
 

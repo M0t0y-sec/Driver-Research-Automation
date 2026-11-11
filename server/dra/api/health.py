@@ -3,7 +3,6 @@
 `/health` is the only endpoint that must always be 200 in Phase 0/1
 so monitoring / liveness probes work even when storage is empty.
 """
-from __future__ import annotations
 
 from fastapi import APIRouter
 
@@ -31,5 +30,5 @@ def _safe_import_langgraph() -> str:
     try:
         import langgraph  # noqa: F401
         return "ok"
-    except Exception as e:  # noqa: BLE001
+    except ImportError as e:
         return f"missing: {e}"

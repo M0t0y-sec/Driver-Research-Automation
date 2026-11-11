@@ -3,7 +3,6 @@
 Only IDs + summaries + status + routing fields live in the state.
 Large Pydantic models are fetched from storage by the agents.
 """
-from __future__ import annotations
 
 from typing import TypedDict
 

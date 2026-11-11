@@ -16,7 +16,6 @@ Facts are taken from, in order:
   4. the PE/strings dictionaries alone (no disassembly), with
      reachability left at ``"unknown"``.
 """
-from __future__ import annotations
 
 from ..registry import tool
 from ...models.common import RiskLevel

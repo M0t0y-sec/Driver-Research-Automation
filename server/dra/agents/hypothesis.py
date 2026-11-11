@@ -13,7 +13,6 @@ Every draft is grounded before it is stored:
 Drafts that fail either check are discarded and recorded in
 ``hypothesis_rejected``; they never reach ranking, QA or a finding.
 """
-from __future__ import annotations
 
 import logging
 

@@ -6,7 +6,6 @@ endpoint says ``not_available`` with remediation steps instead of
 returning a synthetic success.  VM/snapshot listings return 503 with the
 same explicit detail rather than an empty or fake list.
 """
-from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field

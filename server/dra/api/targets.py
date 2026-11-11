@@ -4,7 +4,6 @@ Phase 0/1 stores uploaded files in the local artefacts store and
 returns the sha256 as the canonical target id. The API stays
 unchanged when the real S3/MinIO backend is wired in.
 """
-from __future__ import annotations
 
 import shutil
 from datetime import datetime, timezone

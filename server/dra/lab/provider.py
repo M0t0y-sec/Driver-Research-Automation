@@ -9,7 +9,6 @@ Implementations raise :class:`~dra.lab.errors.LabError` subclasses on
 failure.  They never return an empty list to mean "the backend broke":
 ``[]`` means the backend answered and genuinely has no VMs.
 """
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field

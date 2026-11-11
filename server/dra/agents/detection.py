@@ -1,5 +1,4 @@
 """Detection / Visibility / Robustness (Phase 0/1 stubs)."""
-from __future__ import annotations
 
 from ..agents._ops import AgentOps
 from ..config import SETTINGS

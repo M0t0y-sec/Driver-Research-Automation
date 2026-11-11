@@ -40,7 +40,6 @@ type names include ``memory_copy_sink``, ``missing_probe``,
 ``surface``: the conservative default, because an unrecognised fact
 cannot be assumed to prove a defect.
 """
-from __future__ import annotations
 
 from enum import Enum
 

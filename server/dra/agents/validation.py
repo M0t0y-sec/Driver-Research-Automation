@@ -9,7 +9,6 @@ research run in the crash store.
 No crash is fabricated.  With no crash records, the node reports
 ``validation_skipped=True`` and the downstream triage nodes become no-ops.
 """
-from __future__ import annotations
 
 from ..agents._ops import AgentOps
 from ..graph.state import ResearchState

@@ -4,7 +4,6 @@ We don't bind to SQLAlchemy in Phase 0/1; instead we provide a tiny
 generic repository protocol and a JSON-backed implementation. The
 generic typing lets us type-check at call sites without a real ORM.
 """
-from __future__ import annotations
 
 from typing import Generic, Iterable, Protocol, TypeVar
 

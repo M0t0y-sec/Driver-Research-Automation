@@ -4,7 +4,6 @@ Runs the static analysis tools (analyze_pe, static_strings,
 attack_surface_extract) and writes Observations to the Observation
 Store.
 """
-from __future__ import annotations
 
 from ..agents._ops import AgentOps
 from ..config import SETTINGS

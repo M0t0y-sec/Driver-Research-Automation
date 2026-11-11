@@ -14,7 +14,6 @@ The wrapper:
 The wrapper is the single funnel for everything that flows from a
 sample, tool output, log or crash content into an LLM prompt.
 """
-from __future__ import annotations
 
 import re
 from typing import Any

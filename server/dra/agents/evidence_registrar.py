@@ -1,5 +1,4 @@
 """Evidence Registrar Agent."""
-from __future__ import annotations
 
 from ..agents._ops import AgentOps
 from ..graph.state import ResearchState

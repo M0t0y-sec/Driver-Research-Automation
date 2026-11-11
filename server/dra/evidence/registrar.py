@@ -4,7 +4,6 @@ The single point of write for Evidence objects. `QA Auditor` is *not*
 allowed to call this directly in production code (see the call graph
 in the design doc); it can read but not write.
 """
-from __future__ import annotations
 
 import hashlib
 import json

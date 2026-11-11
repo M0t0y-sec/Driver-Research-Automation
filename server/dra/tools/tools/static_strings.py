@@ -4,7 +4,6 @@ Cheap, no-dependency implementation: pulls printable ASCII / UTF-16LE
 runs above a minimum length. Real implementation (Phase 2+) will use
 FLOSS / `strings` / radare2.
 """
-from __future__ import annotations
 
 import re
 from pathlib import Path

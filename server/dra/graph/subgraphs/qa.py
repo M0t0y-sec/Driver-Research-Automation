@@ -4,7 +4,6 @@ Phase 0/1 wires the QA Auditor node into the main research graph
 directly, so this subgraph is a placeholder for the future split
 when QA gets its own retries / counter-examples.
 """
-from __future__ import annotations
 
 from langgraph.graph import END, START, StateGraph
 

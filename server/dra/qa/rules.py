@@ -20,7 +20,6 @@ by it:
 A failed gate rule is a *veto*: the auditor returns ``inconclusive``
 without spending an LLM call.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable, Mapping

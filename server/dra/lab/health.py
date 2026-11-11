@@ -13,7 +13,6 @@ be told apart.  This module checks what the host can actually verify:
 A missing ``kd.exe`` is a failure with concrete remediation steps, not a
 warning: without it a crash cannot be triaged into a root cause.
 """
-from __future__ import annotations
 
 import glob as _glob_module
 import hashlib

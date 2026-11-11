@@ -1,5 +1,4 @@
 """Input Generation Agent (Phase 0/1 stub)."""
-from __future__ import annotations
 
 from ..agents._ops import AgentOps
 from ..graph.state import ResearchState

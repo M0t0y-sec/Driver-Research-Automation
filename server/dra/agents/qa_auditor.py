@@ -1,5 +1,4 @@
 """QA Auditor Agent."""
-from __future__ import annotations
 
 from ..agents._ops import AgentOps
 from ..evidence.strength import (

@@ -26,7 +26,6 @@ Everything is deterministic and local: no LLM call, no lab call, no
 network.  A crash without a readable analysis yields explicit ``unknown``
 records rather than a fabricated root cause.
 """
-from __future__ import annotations
 
 import re
 from pathlib import Path

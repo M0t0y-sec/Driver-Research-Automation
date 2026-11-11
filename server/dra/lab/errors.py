@@ -4,7 +4,6 @@ The lab layer never turns a failed VBoxManage call into an empty list or a
 fabricated success.  Every failure carries what the operator needs to act
 on: the command that failed, its exit code, and VBoxManage's stderr.
 """
-from __future__ import annotations
 
 from collections.abc import Sequence
 

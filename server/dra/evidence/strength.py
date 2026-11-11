@@ -26,7 +26,6 @@ Downgrade rules (required by the QA gate design):
   exceed E2.  Observing an IOCTL surface - even reproducing it - says
   nothing about a defect, so it must not look "strong".
 """
-from __future__ import annotations
 
 import re
 

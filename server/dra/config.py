@@ -5,7 +5,6 @@ Reads environment variables (with safe defaults) and exposes a single
 the dependency surface small; the team can swap in `BaseSettings` later
 without changing call sites.
 """
-from __future__ import annotations
 
 import os
 from dataclasses import dataclass

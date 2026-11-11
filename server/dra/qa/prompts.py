@@ -3,7 +3,6 @@
 These are template strings, not secrets. The router picks a model
 tier per task (see `dra.llm.router`).
 """
-from __future__ import annotations
 
 QA_REVIEW_SYSTEM = """You are the QA Auditor of DRA, an AI-assisted driver security
 research platform. You do NOT generate new findings. You review claims

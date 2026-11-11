@@ -3,7 +3,6 @@
 Mirrors a minimal S3-style API. Phase 0/1 stores blobs in
 `<artifacts_dir>/<sha256>` and metadata in `<artifacts_dir>/<sha256>.meta.json`.
 """
-from __future__ import annotations
 
 import hashlib
 import shutil

@@ -24,7 +24,6 @@ METHOD handling (the reason this generator exists):
   * METHOD_NEITHER (3)  -- no buffering: the driver receives raw
     user-mode pointers and owns probing/alignment.
 """
-from __future__ import annotations
 
 import hashlib
 import re

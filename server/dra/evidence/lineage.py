@@ -10,7 +10,6 @@ Phase 0/1 builds the chain as a list of `{id, type, label, ref}`
 records, plus a single `ids` list. Phase 2+ will materialise this
 into the dedicated `lineage` table in Postgres.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 

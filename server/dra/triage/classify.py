@@ -30,7 +30,6 @@ corrupt when it was touched; the write that corrupted it is usually not
 in the crash stack.  The reasons tuple records that limitation so a
 human (and the downstream report) sees it.
 """
-from __future__ import annotations
 
 import re
 from dataclasses import dataclass

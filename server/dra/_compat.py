@@ -9,7 +9,6 @@ FastAPI's `include_router` keeps working.
 
 Import this BEFORE constructing any `fastapi.APIRouter`.
 """
-from __future__ import annotations
 
 import starlette.routing as _sr
 

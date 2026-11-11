@@ -17,7 +17,6 @@ Telemetry, Visibility, Detection and Robustness are still stubs that
 advance the state; the real versions wire into Lab + telemetry in
 Phase 2+.
 """
-from __future__ import annotations
 
 from langgraph.graph import END, START, StateGraph
 

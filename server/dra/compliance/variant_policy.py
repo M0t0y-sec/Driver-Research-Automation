@@ -4,7 +4,6 @@ Controls what kinds of sample variants the platform may produce, and
 what the Detection Evaluator may emit. See integration plan section
 7.10.3.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum

@@ -16,7 +16,6 @@ Static-analysis tools:
   * ``poc_generate``          -- IOCTL PoC source generation (source only)
   * ``mock_lab``              -- lab tools backed by the provider factory
 """
-from __future__ import annotations
 
 # Registration side effects (order is not significant).
 from . import analyze_pe  # noqa: F401,E402

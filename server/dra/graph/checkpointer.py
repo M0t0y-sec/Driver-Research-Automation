@@ -3,7 +3,6 @@
 Production swaps this for a Postgres-backed saver without changing
 call sites.
 """
-from __future__ import annotations
 
 from langgraph.checkpoint.memory import MemorySaver
 

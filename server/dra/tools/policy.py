@@ -5,7 +5,6 @@ risk-level based: LOW/MEDIUM allow, HIGH needs approval, EXTREME
 needs dual approval. Per-tool overrides can be added without touching
 this file.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum

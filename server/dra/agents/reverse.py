@@ -16,7 +16,6 @@ The agent no longer asks the model for a prose summary. It:
 The model may return no findings at all. An IOCTL code or a handler
 entry is not a sink, and the prompt says so.
 """
-from __future__ import annotations
 
 import hashlib
 import logging

@@ -10,7 +10,6 @@ Every piece of target- or tool-derived content is passed through
 :mod:`dra.untrusted.wrapper`. The system prompts state explicitly that
 envelope content is data, never instructions.
 """
-from __future__ import annotations
 
 from .common import render_untrusted
 from .hypothesis import (

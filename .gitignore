@@ -45,6 +45,7 @@ Thumbs.db
 
 # Claude Code local config (do not commit personal perms / hooks)
 .claude/settings.local.json
+.claude/worktrees/
 
 # Env / secrets
 .env

@@ -22,7 +22,6 @@ Design rules, in order of importance:
 The parser does not interpret the bugcheck; classification lives in
 :mod:`dra.triage.classify`.
 """
-from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field

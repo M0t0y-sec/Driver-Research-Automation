@@ -17,7 +17,6 @@ recon agent (and older callers) consume it as strings.  The structured
 view lives in ``imports_by_module``.  ``exports`` is structured and now
 contains export ``name``/``ordinal``/``rva``/``va``.
 """
-from __future__ import annotations
 
 import hashlib
 from pathlib import Path

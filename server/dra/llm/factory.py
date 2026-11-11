@@ -9,7 +9,6 @@
 A configured-but-unusable provider is never silent: we log a loud
 warning and fall back to the mock so local runs and CI still work.
 """
-from __future__ import annotations
 
 import logging
 

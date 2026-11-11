@@ -5,7 +5,6 @@ simple: enough to drive the graph end-to-end without any external API.
 When a real provider is wired in, swap this class at the composition
 root (`dra.main` / `dra.llm.router.LLMRouter`).
 """
-from __future__ import annotations
 
 import json
 import re

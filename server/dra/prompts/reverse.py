@@ -8,7 +8,6 @@ the listing before they reach the hypothesis layer.
 
 Contract: ``dra.llm.schemas.ReverseResponse``.
 """
-from __future__ import annotations
 
 import json
 from typing import Any

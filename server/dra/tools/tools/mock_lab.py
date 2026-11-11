@@ -11,7 +11,6 @@ downstream "experiment passed" claim meaningless.  These tools now:
 
 They never invent an execution id, a fingerprint, or a trial outcome.
 """
-from __future__ import annotations
 
 from datetime import datetime, timezone
 

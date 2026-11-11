@@ -4,7 +4,6 @@ Phase 0/1 uses a local flag (`authorized_use`) on the Project record.
 The full OIDC flow is Phase 2+. The shape of `require_*` functions is
 stable so the call sites do not change when we wire in real auth.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol

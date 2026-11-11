@@ -1,5 +1,4 @@
 """Audit service: typed wrapper around the AuditLog JSONL sink."""
-from __future__ import annotations
 
 from ..storage.filesystem import AuditLog
 

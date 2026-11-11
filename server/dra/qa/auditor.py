@@ -20,7 +20,6 @@ Ordering matters:
    confirm ``pass`` or be stricter; a missing / malformed verdict now
    defaults to ``inconclusive`` instead of silently passing.
 """
-from __future__ import annotations
 
 from typing import Any, Mapping
 

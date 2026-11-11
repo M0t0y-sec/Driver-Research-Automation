@@ -9,7 +9,6 @@ The unavailable backend does not pretend to work.  Every operation
 raises :class:`LabUnavailableError` carrying the reason and remediation
 steps, so the gateway records a real failure instead of a fake success.
 """
-from __future__ import annotations
 
 from typing import TYPE_CHECKING
 

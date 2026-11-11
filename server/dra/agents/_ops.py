@@ -7,7 +7,6 @@ place that translates "the agent wants X" into "fetch / put / call".
 In Phase 0/1, every function here is a thin pass-through. Phase 2+
 will add schema validation, retries, and metrics.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 

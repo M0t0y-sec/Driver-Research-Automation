@@ -19,7 +19,6 @@ This is a Phase 0/1 backend. The interface (`FileSystemStore`) is the
 ONLY thing the rest of the system touches; the Postgres/S3 swap is a
 future implementation.
 """
-from __future__ import annotations
 
 import json
 import os

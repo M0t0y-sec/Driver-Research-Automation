@@ -25,7 +25,6 @@ Design notes
   time. Unsupported JSON Schema keywords are stripped for the wire but
   remain client-side validation rules in Pydantic.
 """
-from __future__ import annotations
 
 import json
 import logging

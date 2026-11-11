@@ -4,7 +4,6 @@ Decides what to do next at a coarse level. In Phase 0/1 it is a
 no-op placeholder that simply records a research plan and moves on.
 Phase 2+ will use the LLM to produce a structured plan.
 """
-from __future__ import annotations
 
 from ..agents._ops import AgentOps
 from ..graph.state import ResearchState

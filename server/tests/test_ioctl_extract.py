@@ -5,7 +5,6 @@ and cover x64/x86, exported and non-exported DriverEntry, an IOCTL
 dispatch handler, a jump-table switch, and a driver with no IOCTL
 surface at all.
 """
-from __future__ import annotations
 
 import struct
 

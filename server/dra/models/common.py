@@ -1,5 +1,4 @@
 """Shared enums, ID generator, and small utilities used across models."""
-from __future__ import annotations
 
 import re
 import secrets

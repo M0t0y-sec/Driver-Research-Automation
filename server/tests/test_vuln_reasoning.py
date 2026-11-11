@@ -6,7 +6,6 @@ the structured-output schema, so the client's schema validation, the
 prompt builders and the agents' grounding checks all run exactly as
 they would against the live API.
 """
-from __future__ import annotations
 
 import asyncio
 import json

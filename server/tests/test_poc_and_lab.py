@@ -4,7 +4,6 @@ Everything here is hermetic: VBoxManage is replaced by a fake runner that
 records argv and returns canned ``--machinereadable`` output, so the suite
 never starts, stops or modifies the real win10_rev VM (or any other VM).
 """
-from __future__ import annotations
 
 import hashlib
 import json

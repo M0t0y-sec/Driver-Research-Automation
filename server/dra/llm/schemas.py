@@ -12,7 +12,6 @@ Fields are required unless the task genuinely allows absence. Defaults
 are never substituted for a response that failed validation - the
 client raises :class:`dra.llm.errors.LLMOutputError` instead.
 """
-from __future__ import annotations
 
 from typing import Literal
 

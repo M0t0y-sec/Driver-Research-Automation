@@ -13,7 +13,6 @@ It is deliberately conservative:
   the crash is not linked to a hypothesis, both are ``unknown`` rather
   than an optimistic "unprivileged local user".
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 

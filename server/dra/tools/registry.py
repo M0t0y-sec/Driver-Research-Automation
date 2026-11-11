@@ -5,7 +5,6 @@ risk level and whether it requires a target. The callable receives a
 plain dict of parameters and returns a dict. Heavy I/O is fine; the
 gateway schedules async execution separately.
 """
-from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field

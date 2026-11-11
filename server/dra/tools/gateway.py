@@ -5,7 +5,6 @@ or simply the calling thread). The async interface is preserved so the
 implementation can be swapped for a queue/worker model without
 touching callers.
 """
-from __future__ import annotations
 
 import hashlib
 import json

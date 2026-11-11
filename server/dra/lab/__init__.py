@@ -10,7 +10,6 @@ Public surface:
 
 No import in this package starts a VM or mutates host state.
 """
-from __future__ import annotations
 
 from .errors import LabCommandError, LabError, LabUnavailableError, VMNotFoundError
 from .factory import UnavailableLabProvider, get_lab_provider, resolve_vm_name, resolve_snapshot_name

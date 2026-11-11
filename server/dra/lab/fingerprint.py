@@ -14,7 +14,6 @@ The function accepts either raw bytes/paths or precomputed hashes.  Paths
 are read and hashed; a path that does not exist raises instead of being
 silently treated as a string.
 """
-from __future__ import annotations
 
 import hashlib
 import json

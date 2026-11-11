@@ -4,7 +4,6 @@ The platform treats every model response as untrusted input. A failed
 call must fail loudly: callers get an exception, never a silently
 defaulted payload that could later be mistaken for a model conclusion.
 """
-from __future__ import annotations
 
 
 class LLMError(RuntimeError):

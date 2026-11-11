@@ -12,7 +12,6 @@ output.  The backend is deliberately strict:
 Tests inject a ``runner`` callable, so no real VBoxManage is ever started
 by the test suite.
 """
-from __future__ import annotations
 
 import os
 import re

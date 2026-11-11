@@ -4,7 +4,6 @@ The threat model is the set of attack-actor profiles the platform
 considers when scoring hypotheses and gating detections. See
 integration plan section 1A.2.
 """
-from __future__ import annotations
 
 ATTACK_ACTORS: list[str] = [
     "unprivileged_local_user",

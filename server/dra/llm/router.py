@@ -3,7 +3,6 @@
 See integration plan section 16. The table is data, not code: tweak
 ROUTING_TABLE without touching any caller.
 """
-from __future__ import annotations
 
 from dataclasses import dataclass
 
