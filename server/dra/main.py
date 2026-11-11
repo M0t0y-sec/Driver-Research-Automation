@@ -18,6 +18,7 @@ from .config import SETTINGS
 from .tools.tools import analyze_pe  # noqa: E401
 from .tools.tools import static_strings  # noqa: F401
 from .tools.tools import attack_surface_extract  # noqa: F401
+from .tools.tools import poc_generate  # noqa: F401
 from .tools.tools import mock_lab  # noqa: F401
 
 

@@ -60,6 +60,13 @@ class Settings:
     # when this is set below the version that removed sampling parameters
     # (2026-10-21).
     anthropic_api_version: str | None = None
+    # --- real lab (VirtualBox) configuration -----------------------
+    # DRA_LAB_PROVIDER=mock keeps the honest "not_available" backend;
+    # DRA_LAB_PROVIDER=virtualbox enables VBoxManage-driven experiments.
+    lab_vm: str | None = None
+    lab_snapshot: str | None = None
+    lab_vboxmanage: str | None = None
+    lab_timeout_seconds: float = 120.0
 
     @property
     def projects_dir(self) -> Path:
@@ -135,6 +142,14 @@ def load_settings() -> Settings:
         anthropic_timeout_seconds=_env_float("DRA_ANTHROPIC_TIMEOUT", 300.0),
         anthropic_max_retries=_env_int("DRA_ANTHROPIC_MAX_RETRIES", 2),
         anthropic_api_version=os.environ.get("DRA_ANTHROPIC_API_VERSION") or None,
+        lab_vm=os.environ.get("DRA_LAB_VM") or None,
+        lab_snapshot=os.environ.get("DRA_LAB_SNAPSHOT") or None,
+        lab_vboxmanage=(
+            os.environ.get("DRA_VBOXMANAGE")
+            or os.environ.get("VBOXMANAGE")
+            or None
+        ),
+        lab_timeout_seconds=_env_float("DRA_LAB_TIMEOUT", 120.0),
     )
 
 
